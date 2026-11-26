@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Faffing Finance Live</title>
+<style>
+:root{--bg:#f4f4f4;--card:#fff;--tx:#111;--mu:#777;--ln:#e8e8e8;--chip:#efefef;--acc:#00798c;--neg:#d6455d;--sh:0 1px 6px #0000000f;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d0d0d;--card:#1d1d1d;--tx:#f2f2f2;--mu:#999;--ln:#2e2e2e;--chip:#2a2a2a;--acc:#2de2d0;--neg:#ff6b81;--sh:none;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0d0d0d;--card:#1d1d1d;--tx:#f2f2f2;--mu:#999;--ln:#2e2e2e;--chip:#2a2a2a;--acc:#2de2d0;--neg:#ff6b81;--sh:none;color-scheme:dark}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font:15px/1.35 -apple-system,"Inter","Segoe UI",Roboto,sans-serif;padding-bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+.w{max-width:620px;margin:0 auto;padding:0 14px}
+header{display:flex;gap:10px;align-items:center;padding:12px 0}
+.logo{font-weight:700;font-size:18px;flex:1}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.ic{width:38px;height:38px;border-radius:50%;background:var(--chip)}
+.card{background:var(--card);border-radius:14px;padding:16px;box-shadow:var(--sh);margin-bottom:16px}
+.mu{color:var(--mu)}.sm{font-size:13px}.big{font-size:30px;font-weight:700;letter-spacing:-.5px}
+.pos{color:var(--acc)}.neg{color:var(--neg)}
+h2{font-size:17px;margin:20px 2px 10px}
+.chips{display:flex;gap:6px;overflow-x:auto;margin-top:8px}
+.chip{background:var(--chip);border-radius:16px;padding:6px 12px;white-space:nowrap}.chip.on{background:var(--tx);color:var(--bg)}
+svg.ch{width:100%;height:150px;display:block;margin-top:10px}
+.row{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--ln);cursor:pointer}.row:first-child{border-top:0}
+.av{width:38px;height:38px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-size:11px;font-weight:700;flex:none;overflow:hidden}
+.g{flex:1;min-width:0}.g b,.g span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.r{text-align:right}.r b,.r span{display:block}
+input{font:inherit;color:var(--tx);background:var(--chip);border:0;border-radius:12px;padding:11px 14px;width:100%}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--ln);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px)}
+nav div{display:flex;width:100%;max-width:620px}
+nav button{flex:1;background:none;padding:10px 0;font-size:12px;color:var(--mu)}nav button.on{color:var(--tx);font-weight:700}
+nav i{display:block;font-style:normal;font-size:20px}
+.ov{position:fixed;inset:0;background:#0008;display:none;align-items:flex-end;justify-content:center;z-index:9}.ov.on{display:flex}
+.sh{background:var(--card);width:100%;max-width:620px;border-radius:18px 18px 0 0;padding:18px 18px calc(18px + env(safe-area-inset-bottom,0px))}
+.seg{display:flex;background:var(--chip);border-radius:12px;padding:3px;margin:12px 0}
+.seg button{flex:1;padding:9px;border-radius:10px;background:none}.seg button.on{background:var(--card);font-weight:700}
+.go{width:100%;padding:14px;border-radius:12px;background:var(--acc);color:var(--bg);font-weight:700;margin-top:10px}.go:disabled{opacity:.4}
+.kv{display:flex;justify-content:space-between;gap:10px;padding:4px 0}
+.err{color:var(--neg);min-height:20px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="w">
+<header><div class="logo">Faffing Finance Live</div><button class="ic" id="key" title="API key">⚙</button><button class="ic" id="th" title="Toggle theme">◐</button></header>
+<div class="err" id="st"></div>
+<main id="m"></main>
+</div>
+<nav><div><button data-v="home"><i>▣</i>Holdings</button><button data-v="market"><i>⌕</i>Market</button><button data-v="log"><i>≡</i>History</button></div></nav>
+<div class="ov" id="ov"><div class="sh" id="sh"></div></div>
+<script>
+const MONTHLY=5000,NORDIC=["Sweden","Denmark","Norway","Finland","Iceland"];
+const CL=[[15600,'Mini',.0025,1,.0025,9],[46000,'Small',.0015,39,.0015,49],[143478,'Medium',.00069,69,.00089,69],[1/0,'Flat',0,99,.00079,99]];
+const IV={"1D":["5min",78],"1W":["1h",40],"1M":["1day",30],"3M":["1day",90],"6M":["1day",180],"1Y":["1day",365]};
+const $=s=>document.querySelector(s);
+const SEK=n=>Math.round(n).toLocaleString('en-GB')+' SEK';
+const P2=n=>n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
+const PCT=n=>(n>=0?'+':'')+n.toFixed(2)+'%';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cls=n=>n>=0?'pos':'neg';
+function fee(o,a){const n=!!o.nord,c=CL.find(x=>a<=x[0]),r=n?c[2]:c[4],m=n?c[3]:c[5];return{f:Math.round(Math.max(m,a*r)*100)/100,c:c[1],n,m,r:(r*100).toLocaleString('en-GB',{maximumFractionDigits:3})+'%'}}
+let S=null;try{S=JSON.parse(localStorage.getItem('aktiehem2'))}catch(e){}
+if(!S)S={cash:0,dep:null,hold:{},log:[],list:[],key:''};
+if(!S.key)S.key='07b335f6633e4d2298d3116bdd2f106a';
+const save=()=>{try{localStorage.setItem('aktiehem2',JSON.stringify(S))}catch(e){}};
+const d0=new Date(),mk=d0.getFullYear()*12+d0.getMonth();
+if(S.dep==null){S.cash=MONTHLY;S.dep=mk;S.log.push({t:Date.now(),k:'dep',a:MONTHLY})}
+while(S.dep<mk){S.dep++;S.cash+=MONTHLY;S.log.push({t:Date.now(),k:'dep',a:MONTHLY})}
+const L=s=>S.list.find(x=>x.s===s);
+// ---- Twelve Data ----
+const Q={},QP={},FX={SEK:1},HS={},Qs=[];let busy=0,status='';
+async function api(path,p){if(!S.key)throw new Error('Enter your API key (⚙).');
+const j=await fetch('https://api.twelvedata.com/'+path+'?'+new URLSearchParams({...p,apikey:S.key})).then(r=>r.json());
+if(j.status==='error'||j.code>=400)throw new Error(j.message||'API error');return j}
+function job(f){Qs.push(f);if(!busy){busy=1;pump()}}
+async function pump(){while(Qs.length){try{await Qs.shift()();status=''}catch(e){status=String(e.message||e)}ui();await new Promise(r=>setTimeout(r,1300))}busy=0}
+function fetchQ(o){if(QP[o.s]&&Date.now()-QP[o.s]<60000)return;QP[o.s]=Date.now();
+job(async()=>{const j=await api('quote',{symbol:o.sym,exchange:o.ex});Q[o.s]={p:+j.close,prev:+j.previous_close,cur:j.currency};
+if(j.currency&&!FX[j.currency]){const e=await api('exchange_rate',{symbol:j.currency+'/SEK'});FX[j.currency]=+e.rate}})}
+function fetchH(o,rg){const k=o.s+rg,h=HS[k];if(h&&Date.now()-h.t<3e5)return;HS[k]={t:Date.now(),a:h?h.a:null};const[iv,n]=IV[rg];
+job(async()=>{const j=await api('time_series',{symbol:o.sym,exchange:o.ex,interval:iv,outputsize:n});HS[k]={t:Date.now(),a:j.values.map(v=>+v.close).reverse()}})}
+const fx=s=>Q[s]?FX[Q[s].cur]:null;
+const pxs=s=>Q[s]&&fx(s)?Q[s].p*fx(s):null;
+const P=s=>{const h=S.hold[s];return pxs(s)??(h?h.cost/h.q:null)};
+function series(s,rg){const a=HS[s+rg]?.a,f=fx(s),p=P(s);if(!a||!f)return p?[p,p]:null;return a.map(v=>v*f)}
+const rs=(a,n)=>Array.from({length:n},(_,i)=>a[Math.round(i/(n-1)*(a.length-1))]);
+let view='home',rg='1M',q='',R=[],sheet=null,tm=0;
+function equity(rg){const o=new Array(60).fill(S.cash);Object.keys(S.hold).forEach(s=>{const a=series(s,rg);if(a){const b=rs(a,60);for(let i=0;i<60;i++)o[i]+=b[i]*S.hold[s].q}});return o}
+function chart(a){const mn=Math.min(...a),mx=Math.max(...a),sp=(mx-mn)||1,W=300,H=140;
+const d=a.map((v,k)=>(k?'L':'M')+(k/(a.length-1)*W).toFixed(1)+' '+(H-8-(v-mn)/sp*(H-16)).toFixed(1)).join('');
+return `<svg class="ch" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--acc)" stop-opacity=".28"/><stop offset="1" stop-color="var(--acc)" stop-opacity="0"/></linearGradient></defs><path d="${d}L${W} ${H}L0 ${H}Z" fill="url(#g)"/><path d="${d}" fill="none" stroke="var(--acc)" stroke-width="1.8" vector-effect="non-scaling-stroke"/></svg>`}
+const av=s=>`<div class="av">${esc(s.replace(/[^A-Z0-9]/gi,'').slice(0,3))}</div>`;
+function home(){const hs=Object.keys(S.hold);hs.forEach(s=>{fetchQ(L(s));fetchH(L(s),rg)});
+const e=equity(rg),tot=e[59],ch=tot-e[0],cp=ch/e[0]*100;let hv=0,hc=0;hs.forEach(s=>{hv+=S.hold[s].q*P(s);hc+=S.hold[s].cost});const pl=hv-hc;
+let h=S.key?'':'<div class="card"><b>Add API key</b><div class="sm mu">Tap ⚙ at the top right and paste your free key from twelvedata.com.</div></div>';
+h+=`<div class="card"><div class="mu sm">Total equity</div><div class="big">${SEK(tot)}</div>
+<div class="${cls(ch)}">${PCT(cp)} (${ch>=0?'+':''}${SEK(ch)}) <span class="mu sm">last ${rg}</span></div>
+${hs.length?chart(e):'<p class="mu" style="padding:30px 0;text-align:center">No holdings yet. Find a stock under Market.</p>'}
+<div class="chips">${Object.keys(IV).map(r=>`<button class="chip ${r===rg?'on':''}" data-r="${r}">${r}</button>`).join('')}</div>
+<div class="kv" style="margin-top:14px;border-top:1px solid var(--ln);padding-top:12px"><span class="mu">Available to buy</span><b>${SEK(S.cash)}</b></div>
+<div class="kv"><span class="mu">Holdings value</span><b>${SEK(hv)}</b></div>
+<div class="kv"><span class="mu">Return since purchase (incl. brokerage)</span><b class="${cls(pl)}">${hs.length?(pl>=0?'+':'')+SEK(pl):'–'}</b></div>
+<div class="sm mu" style="margin-top:8px">The chart shows how your current holdings performed over the period. Prices may be delayed. +${SEK(MONTHLY)} is deposited every month.</div></div><h2>Holdings</h2><div class="card">`;
+h+=hs.length?hs.map(s=>{const o=L(s),a=series(s,rg),c=a?(a[a.length-1]/a[0]-1)*100:0,hd=S.hold[s];
+return `<div class="row" data-s="${esc(s)}">${av(o.sym)}<div class="g"><b>${esc(o.n)}</b><span class="mu sm">${hd.q} sh · avg ${P2(hd.cost/hd.q)} SEK</span></div><div class="r"><b class="${cls(c)}">${PCT(c)}</b><span class="sm">${SEK(hd.q*P(s))}</span></div></div>`}).join(''):'<div class="mu">Nothing to show yet.</div>';
+return h+'</div>'}
+function listHTML(){if(!q.trim()){return S.list.length?S.list.map(o=>{fetchQ(o);const c=Q[o.s]&&Q[o.s].prev?(Q[o.s].p/Q[o.s].prev-1)*100:null;
+return `<div class="row" data-s="${esc(o.s)}">${av(o.sym)}<div class="g"><b>${esc(o.n)}</b><span class="mu sm">${esc(o.sym)} · ${esc(o.ex)}</span></div><div class="r"><b>${pxs(o.s)?P2(pxs(o.s))+' SEK':'…'}</b><span class="sm ${c==null?'mu':cls(c)}">${c==null?'':PCT(c)+' today'}</span></div></div>`}).join(''):'<div class="mu">Search by company name or ticker to find stocks on every market.</div>'}
+return R.length?R.map((r,i)=>`<div class="row" data-i="${i}">${av(r.symbol)}<div class="g"><b>${esc(r.instrument_name)}</b><span class="mu sm">${esc(r.symbol)} · ${esc(r.exchange)} · ${esc(r.country)}</span></div><div class="r"><span class="sm mu">${esc(r.currency)}</span></div></div>`).join(''):'<div class="mu">No results (or still searching…).</div>'}
+function market(){return `<input id="q" placeholder="Search stocks, e.g. Railcare" value="${esc(q)}"><div class="card" style="margin-top:12px" id="list">${listHTML()}</div>`}
+function logv(){const l=[...S.log].reverse();return `<h2>History</h2><div class="card">${l.length?l.map(x=>{const d=new Date(x.t).toLocaleString('en-GB',{dateStyle:'short',timeStyle:'short'});
+if(x.k==='dep')return `<div class="row"><div class="g"><b>Monthly deposit</b><span class="mu sm">${d}</span></div><b class="pos">+${SEK(x.a)}</b></div>`;
+return `<div class="row"><div class="g"><b>${x.k==='buy'?'Buy':'Sell'} ${x.q} × ${esc(x.n)}</b><span class="mu sm">${d} · @ ${P2(x.p)} SEK · brokerage ${P2(x.f)} SEK</span></div><b>${x.k==='buy'?'−':'+'}${SEK(x.k==='buy'?x.q*x.p+x.f:x.q*x.p-x.f)}</b></div>`}).join(''):'<div class="mu">No events.</div>'}</div>`}
+function render(){document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===view));$('#st').textContent=status;
+$('#m').innerHTML=view==='home'?home():view==='market'?market():logv()}
+function ui(){if(sheet&&sheet.mode==='t'){const sp=$('#sp');if(sp&&pxs(sheet.s)!=null&&!sheet.drawn){sheet.drawn=1;drawSheet()}else if(sp)sp.textContent=pxs(sheet.s)!=null?P2(pxs(sheet.s))+' SEK':'Fetching price…'}
+$('#st').textContent=status;
+if(view==='market'){const l=$('#list');if(l)l.innerHTML=listHTML()}else if(view==='home'&&document.activeElement.tagName!=='INPUT')render();else if(view==='log')return}
+// ---- Handel ----
+function openSheet(s,side){sheet={mode:'t',s,side,qty:1};fetchQ(L(s));drawSheet();$('#ov').classList.add('on')}
+function drawSheet(){const o=L(sheet.s),p=pxs(sheet.s),h=S.hold[sheet.s],held=h?h.q:0,qn=Math.max(0,Math.floor(+sheet.qty)||0);
+const gross=qn*(p||0),fi=fee(o,gross),tot=sheet.side==='buy'?gross+fi.f:gross-fi.f;
+$('#sh').innerHTML=`<div style="display:flex;gap:12px;align-items:center">${av(o.sym)}<div class="g"><b>${esc(o.n)}</b><span class="mu sm">${esc(o.sym)} · own ${held} sh</span></div><div class="r"><b id="sp">${p!=null?P2(p)+' SEK':'Fetching price…'}</b><span class="sm mu">${Q[sheet.s]?P2(Q[sheet.s].p)+' '+esc(Q[sheet.s].cur):''}</span></div></div>
+<div class="seg"><button data-sd="buy" class="${sheet.side==='buy'?'on':''}">Buy</button><button data-sd="sell" class="${sheet.side==='sell'?'on':''}">Sell</button></div>
+<input id="qty" type="number" min="1" step="1" inputmode="numeric" value="${sheet.qty}" placeholder="Number of shares">
+<div style="margin-top:10px"><div class="kv"><span class="mu">Amount</span><span>${SEK(gross)}</span></div>
+<div class="kv"><span class="mu">Brokerage (${fi.c}, ${fi.n?'Nordic':'non-Nordic'}: ${fi.r}, min ${fi.m} SEK)</span><span>${P2(fi.f)} SEK</span></div>
+<div class="kv"><b>${sheet.side==='buy'?'Total to pay':'You receive'}</b><b>${SEK(Math.max(0,tot))}</b></div><div class="kv"><span class="mu">Available</span><span>${SEK(S.cash)}</span></div></div>
+<div class="err" id="er"></div><button class="go" id="gob" ${p==null?'disabled':''}>${sheet.side==='buy'?'Buy':'Sell'} ${qn} shares</button><button class="go" id="cl" style="background:var(--chip);color:var(--tx);margin-top:8px">Cancel</button>`}
+function trade(){const o=L(sheet.s),p=pxs(sheet.s),qn=Math.floor(+sheet.qty)||0,er=$('#er');if(p==null)return;const FE=fee(o,qn*p).f;
+if(qn<1){er.textContent='Enter at least 1 share.';return}
+let h=S.hold[sheet.s]||{q:0,cost:0};
+if(sheet.side==='buy'){const c=qn*p+FE;if(c>S.cash){er.textContent='Not enough cash ('+SEK(c)+' needed).';return}S.cash-=c;h.q+=qn;h.cost+=c}
+else{if(qn>h.q){er.textContent='You only own '+h.q+' shares.';return}if(qn*p<=FE){er.textContent='The sale does not cover the brokerage.';return}S.cash+=qn*p-FE;h.cost*=(h.q-qn)/h.q;h.q-=qn}
+if(h.q>0)S.hold[sheet.s]=h;else delete S.hold[sheet.s];
+S.log.push({t:Date.now(),k:sheet.side,s:o.s,n:o.n,q:qn,p,f:FE});save();closeSheet();render()}
+function closeSheet(){sheet=null;$('#ov').classList.remove('on')}
+function keySheet(){sheet={mode:'k'};$('#sh').innerHTML=`<b>Twelve Data API key</b><p class="sm mu">Create a free account at twelvedata.com and copy your key. It is only stored in this browser.</p><input id="kv" placeholder="Paste key" value="${esc(S.key)}"><button class="go" id="ks">Save</button><button class="go" id="cl" style="background:var(--chip);color:var(--tx);margin-top:8px">Cancel</button>`;$('#ov').classList.add('on')}
+document.addEventListener('click',e=>{const t=e.target.closest('button,.row,.ov');if(!t)return;
+if(t.dataset.v){view=t.dataset.v;render();return}
+if(t.dataset.r){rg=t.dataset.r;render();return}
+if(t.dataset.i!=null&&t.classList.contains('row')){const r=R[+t.dataset.i],s=r.symbol+'@'+r.exchange;if(!L(s))S.list.push({s,sym:r.symbol,ex:r.exchange,n:r.instrument_name,cur:r.currency,nord:NORDIC.includes(r.country)});save();openSheet(s,'buy');return}
+if(t.classList.contains('row')&&t.dataset.s){openSheet(t.dataset.s,view==='home'?'sell':'buy');return}
+if(t.dataset.sd){sheet.side=t.dataset.sd;drawSheet();return}
+if(t.id==='gob'){trade();return}
+if(t.id==='cl'||(t.id==='ov'&&e.target.id==='ov')){closeSheet();return}
+if(t.id==='key'){keySheet();return}
+if(t.id==='ks'){S.key=$('#kv').value.trim();save();status='';closeSheet();Object.keys(QP).forEach(k=>delete QP[k]);render();return}
+if(t.id==='th'){const r=document.documentElement,d=r.dataset.theme==='dark'||(!r.dataset.theme&&matchMedia('(prefers-color-scheme:dark)').matches);r.dataset.theme=d?'light':'dark'}});
+document.addEventListener('input',e=>{
+if(e.target.id==='q'){q=e.target.value;clearTimeout(tm);R=[];$('#list').innerHTML=listHTML();if(q.trim().length<2)return;
+tm=setTimeout(()=>job(async()=>{const j=await api('symbol_search',{symbol:q.trim(),outputsize:20});R=(j.data||[]).filter(x=>/stock|equity|etf|adr|reit/i.test(x.instrument_type||'stock'))}),500)}
+if(e.target.id==='qty'){sheet.qty=e.target.value;const p=e.target.selectionStart;drawSheet();const i=$('#qty');i.focus();try{i.setSelectionRange(p,p)}catch(x){}}});
+setInterval(()=>{Object.keys(QP).forEach(k=>delete QP[k]);Object.keys(S.hold).forEach(s=>fetchQ(L(s)));if(sheet&&sheet.mode==='t')fetchQ(L(sheet.s))},60000);
+render();
+</script>
+</body>
+</html>
